@@ -181,10 +181,71 @@ export class SingaporeWeatherClient {
   ) {}
 
   async getCurrentWeather(latitude: number, longitude: number): Promise<WeatherSnapshot> {
-    const forecastPayload = await this.fetchLatestForecastPayload().catch(() => null);
-    return forecastPayload
+    const [
+      forecastPayload,
+      temperature,
+      humidity,
+      rainfall,
+      windSpeed,
+      windDirection,
+      uv,
+      airQuality,
+      twentyFourHour,
+      fourDay,
+    ] = await Promise.all([
+      this.fetchLatestForecastPayload().catch(() => null),
+      this.fetchNearestReading('air-temperature', latitude, longitude).catch(emptyReading),
+      this.fetchNearestReading('relative-humidity', latitude, longitude).catch(emptyReading),
+      this.fetchNearestReading('rainfall', latitude, longitude).catch(emptyReading),
+      this.fetchNearestReading('wind-speed', latitude, longitude).catch(emptyReading),
+      this.fetchNearestReading('wind-direction', latitude, longitude).catch(emptyReading),
+      this.fetchUvIndex().catch(() => ({ value: null, timestamp: null })),
+      this.fetchAirQuality(latitude, longitude).catch(() => ({
+        psi: null,
+        pm25: null,
+        region: null,
+        timestamp: null,
+      })),
+      this.fetchTwentyFourHourForecast(latitude, longitude).catch(() => ({
+        low: null,
+        high: null,
+        periods: [],
+        timestamp: null,
+      })),
+      this.fetchFourDayForecast().catch(() => ({ days: [], timestamp: null })),
+    ]);
+    const forecast = forecastPayload
       ? this.snapshotFromPayload(forecastPayload, latitude, longitude)
       : this.emptyForecastSnapshot();
+
+    return {
+      ...forecast,
+      temperature_c: temperature.value,
+      humidity_percent: humidity.value,
+      rainfall_mm: rainfall.value,
+      wind_speed_knots: windSpeed.value,
+      wind_direction_degrees: windDirection.value,
+      forecast_low_c: twentyFourHour.low,
+      forecast_high_c: twentyFourHour.high,
+      uv_index: uv.value,
+      psi_twenty_four_hourly: airQuality.psi,
+      pm25_one_hourly: airQuality.pm25,
+      air_quality_region: airQuality.region,
+      forecast_periods: twentyFourHour.periods,
+      daily_forecast: fourDay.days,
+      observed_at:
+        latestTimestamp([
+          temperature.timestamp,
+          humidity.timestamp,
+          rainfall.timestamp,
+          windSpeed.timestamp,
+          windDirection.timestamp,
+          uv.timestamp,
+          airQuality.timestamp,
+          twentyFourHour.timestamp,
+          fourDay.timestamp,
+        ]) ?? forecast.observed_at,
+    };
   }
 
   async fetchLatestForecastPayload(): Promise<ForecastPayload> {
@@ -559,6 +620,9 @@ function valueForRegion(
   return numberOrNull(values[region]);
 }
 
+function emptyReading(): { value: number | null; timestamp: string | null } {
+  return { value: null, timestamp: null };
+}
 
 function defaultRegions(): RegionMetadata[] {
   return [
