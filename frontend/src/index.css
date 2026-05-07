@@ -41,3 +41,13 @@ input:focus-visible {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+.sidebar-delete-btn {
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-delete-btn:hover {
+  color: rgb(255, 255, 255);
+  background: rgba(255, 255, 255, 0.16);
+}
