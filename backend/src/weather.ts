@@ -181,10 +181,58 @@ export class SingaporeWeatherClient {
   ) {}
 
   async getCurrentWeather(latitude: number, longitude: number): Promise<WeatherSnapshot> {
-    const forecastPayload = await this.fetchLatestForecastPayload().catch(() => null);
-    return forecastPayload
-      ? this.snapshotFromPayload(forecastPayload, latitude, longitude)
-      : this.emptyForecastSnapshot();
+    const [
+      forecastResult,
+      temperatureResult,
+      humidityResult,
+      rainfallResult,
+      windSpeedResult,
+      windDirectionResult,
+      uvResult,
+      airQualityResult,
+      twentyFourHourResult,
+      fourDayResult,
+    ] = await Promise.allSettled([
+      this.fetchLatestForecastPayload(),
+      this.fetchNearestReading('air-temperature', latitude, longitude),
+      this.fetchNearestReading('relative-humidity', latitude, longitude),
+      this.fetchNearestReading('rainfall', latitude, longitude),
+      this.fetchNearestReading('wind-speed', latitude, longitude),
+      this.fetchNearestReading('wind-direction', latitude, longitude),
+      this.fetchUvIndex(),
+      this.fetchAirQuality(latitude, longitude),
+      this.fetchTwentyFourHourForecast(latitude, longitude),
+      this.fetchFourDayForecast(),
+    ]);
+
+    const base =
+      forecastResult.status === 'fulfilled'
+        ? this.snapshotFromPayload(forecastResult.value, latitude, longitude)
+        : this.emptyForecastSnapshot();
+
+    return {
+      ...base,
+      temperature_c: temperatureResult.status === 'fulfilled' ? temperatureResult.value.value : null,
+      humidity_percent: humidityResult.status === 'fulfilled' ? humidityResult.value.value : null,
+      rainfall_mm: rainfallResult.status === 'fulfilled' ? rainfallResult.value.value : null,
+      wind_speed_knots: windSpeedResult.status === 'fulfilled' ? windSpeedResult.value.value : null,
+      wind_direction_degrees:
+        windDirectionResult.status === 'fulfilled' ? windDirectionResult.value.value : null,
+      uv_index: uvResult.status === 'fulfilled' ? uvResult.value.value : null,
+      psi_twenty_four_hourly:
+        airQualityResult.status === 'fulfilled' ? airQualityResult.value.psi : null,
+      pm25_one_hourly:
+        airQualityResult.status === 'fulfilled' ? airQualityResult.value.pm25 : null,
+      air_quality_region:
+        airQualityResult.status === 'fulfilled' ? airQualityResult.value.region : null,
+      forecast_low_c:
+        twentyFourHourResult.status === 'fulfilled' ? twentyFourHourResult.value.low : null,
+      forecast_high_c:
+        twentyFourHourResult.status === 'fulfilled' ? twentyFourHourResult.value.high : null,
+      forecast_periods:
+        twentyFourHourResult.status === 'fulfilled' ? twentyFourHourResult.value.periods : [],
+      daily_forecast: fourDayResult.status === 'fulfilled' ? fourDayResult.value.days : [],
+    };
   }
 
   async fetchLatestForecastPayload(): Promise<ForecastPayload> {
