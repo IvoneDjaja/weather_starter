@@ -227,7 +227,7 @@ export function HumidityTile({ weather }: WeatherProps) {
 
 export function AveragesTile({ weather }: WeatherProps) {
   return (
-    <TileShell icon={<TrendIcon />} title="Forecast High">
+    <TileShell icon={<TrendIcon />} title="Forecast High" className="col-span-2">
       <div className="text-4xl font-light leading-none tabular-nums text-white/95">
         {formatTemperature(weather?.forecast_high_c)}&deg;
       </div>
@@ -244,6 +244,26 @@ export function AveragesTile({ weather }: WeatherProps) {
   );
 }
 
+export function ConditionTile({ weather }: WeatherProps) {
+  const condition = weather?.condition ?? null;
+  const area = weather?.area ?? null;
+  const validPeriod = weather?.valid_period_text ?? null;
+
+  return (
+    <TileShell icon={<CloudIcon className="h-3.5 w-3.5" />} title="Condition" className="col-span-2">
+      <div className="text-2xl font-light leading-snug text-white/95">
+        {condition ?? '--'}
+      </div>
+      {area && (
+        <div className="mt-1 text-base text-white/85">{area}</div>
+      )}
+      <p className="mt-3 text-xs leading-snug text-white/70">
+        {validPeriod ?? '2-hour area forecast from NEA.'}
+      </p>
+    </TileShell>
+  );
+}
+
 export function TileGrid({ weather }: WeatherProps) {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -253,6 +273,7 @@ export function TileGrid({ weather }: WeatherProps) {
       <TemperatureTile weather={weather} />
       <PrecipitationTile weather={weather} />
       <HumidityTile weather={weather} />
+      <ConditionTile weather={weather} />
       <AveragesTile weather={weather} />
     </div>
   );
